@@ -7,6 +7,7 @@ if (!class_exists('DJJob')) {
 
 class CakeDjjobBridge {
 	protected static $_instance = null;
+	public $settings = array();
 
 	public static function getInstance() {
 		if (is_null(self::$_instance)) {
@@ -20,6 +21,7 @@ class CakeDjjobBridge {
 
 	public function setup($settings, $config = array()) {
 		$settings = array_merge($settings, $config);
+		$this->settings = $settings;
 		$connection = ConnectionManager::getDataSource($settings['connection']);
 
 		if ($settings['type'] == 'mysql' || !empty($connection)) {

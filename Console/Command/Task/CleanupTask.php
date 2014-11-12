@@ -1,5 +1,6 @@
 <?php
 App::uses('AppShell', 'Console/Command');
+App::uses('CakeDjjobBridge', 'CakeDjjob.Lib');
 
 class CleanupTask extends AppShell {
 
@@ -54,10 +55,11 @@ class CleanupTask extends AppShell {
  */
 	public function execute() {
 		Configure::write('debug', $this->params['debug']);
-diebug($this);
-		if ($this->params['action'] == 'clean') {
+		
+		$action = $this->params['action'];
+		if ($action == 'clean') {
 			$column = 'failed_at';
-		} elseif ($this->params['action'] == 'unlock') {
+		} elseif ($action == 'unlock') {
 			$column = 'locked_at';
 		} else {
 			$this->cakeError('error', array(array(
@@ -80,10 +82,18 @@ diebug($this);
 			$conditions['Job.queue'] = $this->params['queue'];
 		}
 
-		$JobModel = ClassRegistry::init('Job');
+		$modelOptions = array(
+			"class" => "Job",
+		);
+
+		$datasource = CakeDjjobBridge::getInstance()->settings["connection"];
+		if ($datasource) {
+			$modelOptions["ds"] = $datasource;
+		}
+		$JobModel = ClassRegistry::init($modelOptions);
 		$jobs = $JobModel->find('all', compact('conditions'));
 		foreach ($jobs as $job) {
-			switch ($this->_action) {
+			switch ($action) {
 				case 'unlock':
 					$job['Job']['locked_at'] = null;
 					$job['Job']['locked_by'] = null;
@@ -97,7 +107,7 @@ diebug($this);
 
 		$this->out(sprintf('%d %s%s',
 			count($jobs),
-			($this->params['save'])? '':'not', " {$this->params['action']}ed\n"
+			($this->params['save'])? '':'not', " {$action}ed\n"
 		));
 	}
 
