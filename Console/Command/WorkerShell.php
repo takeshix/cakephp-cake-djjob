@@ -1,8 +1,6 @@
 <?php
 App::uses('AppShell', 'Console/Command');
-App::uses('ConnectionManager', 'Model');
-App::uses('CakeJob', 'CakeDjjob.Job');
-App::uses('DJJob', 'Djjob.Vendor');
+App::uses('CakeDjjobBridge', 'CakeDjjob.Lib');
 
 /**
  * Convenience method to unserialize CakeDjjob classes properly
@@ -27,7 +25,9 @@ function unserialize_jobs($className) {
 		$plugin = "{$plugin}.";
 	}
 
-	App::uses($className, "{$plugin}Job");
+	if (!class_exists($className)) {
+		App::uses($className, "{$plugin}Job");
+	}
 }
 
 /**
@@ -47,21 +47,7 @@ class WorkerShell extends AppShell {
 	public function startup() {
 		parent::startup();
 		ini_set('unserialize_callback_func', 'unserialize_jobs');
-		$connection = ConnectionManager::getDataSource($this->params['connection']);
-
-		if ($this->params['type'] == 'mysql') {
-			DJJob::setConnection($connection->getConnection());
-		} else {
-			DJJob::configure(
-				implode(';', array(
-					"{$this->params['type']}:host={$connection->config['host']}",
-					"dbname={$connection->config['database']}",
-					"port={$connection->config['port']}",
-					"user={$connection->config['login']}",
-					"password={$connection->config['password']}"
-				))
-			);
-		}
+		CakeDjjobBridge::getInstance()->setup($this->params);
 	}
 
 /**

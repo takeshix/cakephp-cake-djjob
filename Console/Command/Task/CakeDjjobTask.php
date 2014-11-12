@@ -1,8 +1,6 @@
 <?php
 App::uses('AppShell', 'Console/Command');
-App::uses('ConnectionManager', 'Model');
-App::uses('CakeJob', 'CakeDjjob.Job');
-App::uses('DJJob', 'Djjob.Vendor');
+App::uses('CakeDjjobBridge', 'CakeDjjob.Lib');
 
 /**
  * CakeDjjob Task
@@ -40,22 +38,7 @@ class CakeDjjobTask extends AppShell {
  * @access public
  */
 	function configure($config) {
-		$this->settings = array_merge($this->settings, $config);
-		$connection = ConnectionManager::getDataSource($this->settings['connection']);
-
-		if ($this->settings['type'] == 'mysql') {
-			DJJob::setConnection($connection->getConnection());
-		} else {
-			DJJob::configure(
-				implode(';', array(
-					"{$this->settings['type']}:host={$connection->config['host']}",
-					"dbname={$connection->config['database']}",
-					"port={$connection->config['port']}",
-					"user={$connection->config['login']}",
-					"password={$connection->config['password']}"
-				))
-			);
-		}
+		CakeDjjobBridge::getInstance()->setup($this->settings, $config);
 	}
 
 /**
@@ -71,30 +54,8 @@ class CakeDjjobTask extends AppShell {
  */
 	function load() {
 		$args = func_get_args();
-		if (empty($args) || !is_string($args[0])) {
-			return null;
-		}
+		return CakeDjjobBridge::getInstance()->callLoad($args);
 
-		$jobName = array_shift($args);
-		list($plugin, $className) = pluginSplit($jobName);
-		if ($plugin) {
-			$plugin = "{$plugin}.";
-		}
-
-		if (!class_exists($className)) {
-			App::uses($className, "{$plugin}Job");
-		}
-
-		if (empty($args)) {
-			return new $className();
-		}
-
-		if (!class_exists('ReflectionClass')) {
-			return null;
-		}
-
-		$ref = new ReflectionClass($className);
-		return $ref->newInstanceArgs($args);
 	}
 
 /**
@@ -109,7 +70,7 @@ class CakeDjjobTask extends AppShell {
  * @return boolean True if enqueue is successful, false on failure
  */
 	function enqueue($job, $queue = "default", $run_at = null) {
-		return DJJob::enqueue($job, $queue, $run_at);
+		return CakeDjjobBridge::getInstance()->enqueue($job, $queue, $run_at);
 	}
 
 /**
@@ -121,7 +82,7 @@ class CakeDjjobTask extends AppShell {
  * @return boolean True if bulk enqueue is successful, false on failure
  */
 	function bulkEnqueue($jobs, $queue = "default", $run_at = null) {
-		return DJJob::bulkEnqueue($jobs, $queue, $run_at);
+		return CakeDjjobBridge::getInstance()->bulkEnqueue($job, $queue, $run_at);
 	}
 
 /**
@@ -131,6 +92,6 @@ class CakeDjjobTask extends AppShell {
  * @return array
  **/
 	function status($queue = "default") {
-		return DJJob::status($queue);
+		return CakeDjjobBridge::getInstance()->status($queue);
 	}
 }
