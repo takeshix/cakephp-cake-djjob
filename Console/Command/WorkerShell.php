@@ -37,7 +37,11 @@ function unserialize_jobs($className) {
  */
 class WorkerShell extends AppShell {
 
-	public $tasks = array('CakeDjjob.Cleanup', 'CakeDjjob.Run', 'CakeDjjob.Status');
+	public $tasks = array(
+		'CakeDjjob.Cleanup', 'CakeDjjob.Run', 'CakeDjjob.Status',
+		'CakeDjjob.LockStatus', 'CakeDjjob.ForceUnlockAll',
+		"CakeDjjob.FailedStatus",
+	);
 
 /**
  * Override startup
@@ -61,9 +65,12 @@ class WorkerShell extends AppShell {
 		$this->out(__d('cake_djjob', '[R]un jobs in the system'));
 		$this->out(__d('cake_djjob', '[S]tatus of system'));
 		$this->out(__d('cake_djjob', '[C]leans a job queue'));
+		$this->out(__d('cake_djjob', '[L]ocked queue list'));
+		$this->out(__d('cake_djjob', '[U]pdate job queues from locked state to unlocked state'));
+		$this->out(__d('cake_djjob', '[F]ailed queue list'));
 		$this->out(__d('cake_djjob', '[Q]uit'));
 
-		$choice = strtolower($this->in(__d('cake_djjob', 'What would you like to do?'), array('R', 'S', 'C', 'Q')));
+		$choice = strtolower($this->in(__d('cake_djjob', 'What would you like to do?'), array('R', 'S', 'C', 'L', 'U', 'F', 'Q')));
 		switch ($choice) {
 			case 'r':
 				$this->Run->execute();
@@ -72,7 +79,21 @@ class WorkerShell extends AppShell {
 				$this->Status->execute();
 			break;
 			case 'c':
+				$this->Cleanup->params["action"] = "clean";
+				$this->Cleanup->params["save"] = true;
 				$this->Cleanup->execute();
+			break;
+			case 'l':
+				$this->LockStatus->execute();
+			break;
+			case 'u':
+				$choice = strtolower($this->in(__d('cake_djjob', 'Really ?'), array('Y', 'N')));
+				if ($choice == "y") {
+					$this->ForceUnlockAll->execute();
+				}
+			break;
+			case 'f':
+				$this->FailedStatus->execute();
 			break;
 			case 'q':
 				exit(0);
@@ -120,6 +141,15 @@ class WorkerShell extends AppShell {
 		))->addSubcommand('cleanup', array(
 			'help' => __d('cake_djjob', 'cleans a job queue'),
 			'parser' => $this->Cleanup->getOptionParser()
+		))->addSubcommand('lock_status', array(
+			'help' => __d('cake_djjob', 'return list of locked job queues'),
+			'parser' => $this->LockStatus->getOptionParser()
+		))->addSubcommand('force_unlock_all', array(
+			'help' => __d('cake_djjob', 'reset a locked job queue'),
+			'parser' => $this->ForceUnlockAll->getOptionParser()
+		))->addSubcommand('failed_status', array(
+			'help' => __d('cake_djjob', 'return list of locked job queues'),
+			'parser' => $this->FailedStatus->getOptionParser()
 		));
 	}
 
